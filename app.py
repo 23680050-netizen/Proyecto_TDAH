@@ -1,4 +1,5 @@
 import base64
+import inspect
 from pathlib import Path
 
 import pandas as pd
@@ -49,6 +50,18 @@ def fmt_p(p):
 
 def elegir(clave, opciones=an.VARS, etiqueta="Variable"):
     return st.selectbox(etiqueta, opciones, format_func=lambda c: an.ETIQ[c], key=clave)
+
+
+def ver_codigo(*objetos, extra=""):
+    """Muestra, solo si el usuario lo pide, el código real de las funciones de la sección."""
+    partes = []
+    for o in objetos:
+        try:
+            partes.append(inspect.getsource(o))
+        except (OSError, TypeError):
+            partes.append(f"# No se pudo mostrar el código de {getattr(o, '__name__', 'esta parte')}")
+    with st.expander("Ver el código de esta sección"):
+        st.code("\n\n".join(partes) + extra, language="python")
 
 
 def encabezado(msg, grande=False):
@@ -173,6 +186,7 @@ def p_situacion():
              "(para comparar) y suficientes estudiantes para encontrar perfiles distintos.")
     st.write("**Primeros registros (sin limpiar):**")
     st.dataframe(crudo_f.head(10), hide_index=True)
+    ver_codigo(an.generar_datos)
 
 
 def p_descriptiva():
@@ -206,6 +220,7 @@ def p_descriptiva():
     med = crudo_f.groupby("taller_gestion_tiempo")[var].median()
     st.write(f"La mediana de **{an.ETIQ[var].lower()}** es {med['Sí']:.2f} con taller y {med['No']:.2f} sin taller "
              f"(diferencia de {med['Sí'] - med['No']:+.2f}). Esto orienta qué comparar formalmente en la sección Inferencial.")
+    ver_codigo(an.resumen, an.limites_tukey, an.atipicos, g_hist, g_caja)
 
 
 def p_limpieza():
@@ -237,6 +252,7 @@ def p_limpieza():
     z = pd.DataFrame(an.StandardScaler().fit_transform(limpio[an.FEATS]), columns=an.FEATS).agg(["mean", "std"]).round(3)
     st.write("**Comprobación del z-score (media 0 y desviación 1):**")
     st.dataframe(z)
+    ver_codigo(an.limpiar, extra="\n\n# Estandarización z-score (para K-means)\nz = StandardScaler().fit_transform(limpio[FEATS])")
 
 
 def p_inferencial():
@@ -278,6 +294,7 @@ def p_inferencial():
     st.write(f"**Supuestos y limitaciones:** normalidad de residuos (Shapiro-Wilk): p = {g['shapiro_p']:.3f} "
              f"({'se cumple' if g['shapiro_p'] > 0.05 else 'no se cumple del todo, así que se interpreta con cautela'}). "
              "Además, **correlación no implica causalidad**: que dos variables se muevan juntas no demuestra que una cause a la otra.")
+    ver_codigo(an.prueba_t, an.regresion_simple, g_reg)
 
 
 def p_kmeans():
@@ -309,6 +326,7 @@ def p_kmeans():
     st.dataframe(tabla[["Segmento", "Estudiantes", "Atención (min)", "Estudio (h/sem)", "Sueño (h)", "Celular (h/día)", "Calificación",
                         "Acción recomendada"]], hide_index=True)
     st.caption("Los segmentos describen hábitos de estudio; no son diagnósticos ni etiquetas de las personas.")
+    ver_codigo(an.silueta, an.segmentar, g_seg)
 
 
 def p_dashboard():
@@ -358,6 +376,7 @@ def p_dashboard():
 
 **Límites y ética:** los datos son simulados y las relaciones son asociaciones, no causas. Los perfiles orientan el apoyo, pero la decisión sobre cada persona
 debe tomarla un profesional, con su consentimiento y sin diagnosticar ni sancionar.""")
+    ver_codigo(p_dashboard, g_hist, g_reg, g_caja, g_seg)
 
 
 {"inicio": p_inicio, "situacion": p_situacion, "descriptiva": p_descriptiva, "limpieza": p_limpieza,
