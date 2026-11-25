@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.colors import LinearSegmentedColormap
 
 import analisis as an
 
@@ -16,6 +17,8 @@ COL_SEG = {"Enfocados constantes": "#0097B2", "Esforzados con atención corta": 
 PAGINAS = [("situacion", "1. Situación y datos"), ("descriptiva", "2. Estadística descriptiva"), ("limpieza", "3. Limpieza"),
            ("inferencial", "4. Inferencial"), ("kmeans", "5. K-Means"), ("dashboard", "6. Dashboard")]
 sns.set_theme(style="whitegrid")
+CMAP_T = LinearSegmentedColormap.from_list("teal", ["#EAF8FB", "#8EDBE9", "#0AA2BF", "#02566B"])
+CMAP_C = LinearSegmentedColormap.from_list("calido", ["#FFF6DD", "#F6D58B", "#EE9B6A", "#D9573B"])
 
 
 @st.cache_data
@@ -32,10 +35,54 @@ def ir(k):
     st.session_state.pag = k
 
 
+def mezcla(c1, c2, t):
+    a, b = [tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in (c1, c2)]
+    return "#%02x%02x%02x" % tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+
+
 def tarjeta(titulo, valor, color=MENU[1]):
-    st.markdown(f"""<div style="background:{color};padding:14px 16px;border-radius:8px;color:white;text-align:center">
-        <div style="font-size:.9rem;opacity:.92">{titulo}</div><div style="font-size:1.5rem;font-weight:700">{valor}</div></div>""",
-                unsafe_allow_html=True)
+    fondo = f"linear-gradient(135deg,{color},{mezcla(color, OSC, .45)})"
+    st.markdown(f"""<div style="background:{fondo};padding:14px 16px;border-radius:10px;color:white;text-align:center;
+        box-shadow:0 3px 8px rgba(1,40,46,.18)"><div style="font-size:.9rem;opacity:.92">{titulo}</div>
+        <div style="font-size:1.5rem;font-weight:700">{valor}</div></div>""", unsafe_allow_html=True)
+
+
+def tabla_color(df, grad=(), calido=(), index=True, destacar=None, mostrar=True):
+    """Tabla con filas alternadas, degradados en tonos turquesa (o cálidos para alertas) y encabezado de fila de color."""
+    sty = df.style.apply(lambda c: ["background-color:#F3FBFD" if i % 2 else "background-color:#FFFFFF" for i in range(len(c))], axis=0)
+    sty = sty.format(precision=2)
+    if destacar:
+        sty = sty.set_properties(subset=destacar, **{"font-weight": "bold", "background-color": "#CFEFF5", "color": OSC})
+    if len(grad):
+        sty = sty.background_gradient(cmap=CMAP_T, subset=list(grad))
+    if len(calido):
+        sty = sty.background_gradient(cmap=CMAP_C, subset=list(calido))
+    if index:
+        sty = sty.apply_index(lambda x: ["background-color:#0097B2;color:white;font-weight:bold"] * len(x), axis=0)
+    if mostrar:
+        st.dataframe(sty, hide_index=not index)
+    return sty
+
+
+_avisos = {"n": 0}
+
+
+def aviso(texto, tipo):
+    _avisos["n"] += 1
+    with st.container(key=f"aviso-{tipo}-{_avisos['n']}"):
+        st.markdown(texto)
+
+
+def aviso_info(t):
+    aviso(t, "info")
+
+
+def aviso_ok(t):
+    aviso(t, "ok")
+
+
+def aviso_alerta(t):
+    aviso(t, "alerta")
 
 
 def mostrar(fig):
@@ -125,6 +172,14 @@ section[data-testid="stSidebar"]{{background:{OSC};min-width:300px;max-width:300
 .burbuja{{position:relative;background:{OSC};color:#fff;padding:14px 18px;border-radius:8px;max-width:620px;
   font-family:'Libre Baskerville',Georgia,serif;font-size:.95rem;line-height:1.5}}
 .burbuja::before{{content:"";position:absolute;left:-10px;top:50%;margin-top:-9px;border:9px solid transparent;border-left:0;border-right-color:{OSC}}}
+h3{{color:{OSC};border-bottom:2px solid {TEAL};padding-bottom:4px}}
+[class*="st-key-aviso-"]{{padding:12px 16px;border-radius:8px;border-left:6px solid;margin:8px 0}}
+[class*="st-key-aviso-"] p{{margin:0;color:{OSC}}}
+[class*="st-key-aviso-info"]{{background:#E3F6FA;border-color:#0097B2}}
+[class*="st-key-aviso-ok"]{{background:#E2F5EC;border-color:#2A9D8F}}
+[class*="st-key-aviso-alerta"]{{background:#FFF4DA;border-color:#E9A23B}}
+.st-key-b_inicio button{{background:#0097B2;border:0;border-radius:6px}}
+.st-key-b_inicio button p{{color:#fff}}
 .pie{{display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;border-top:1.5px solid {OSC};margin-top:36px;padding-top:12px;
   font-family:'Libre Baskerville',Georgia,serif;font-size:.9rem;color:{OSC}}}
 </style>""", unsafe_allow_html=True)
@@ -140,7 +195,7 @@ with st.sidebar:
 crudo, limpio = cargar()
 crudo_f, limpio_f = crudo[crudo.semestre.between(*sem)], limpio[limpio.semestre.between(*sem)]
 if len(limpio_f) < 30:
-    st.warning("Hay muy pocos estudiantes con ese filtro. Amplía el rango de semestres.")
+    aviso_alerta("Hay muy pocos estudiantes con ese filtro. Amplía el rango de semestres.")
     st.stop()
 if pag != "inicio":
     st.button("Inicio", key="b_inicio", on_click=ir, args=("inicio",))
@@ -161,16 +216,16 @@ def p_situacion():
              "Cuenta con registros de **300 estudiantes** sobre sus hábitos de estudio, sueño, uso del celular y atención sostenida, "
              "además de su calificación promedio. El TDAH es un trastorno del neurodesarrollo que **solo puede diagnosticar un profesional**: "
              "aquí se estudian perfiles de regulación de la atención, no diagnósticos.")
-    st.info("**Pregunta de decisión:** ¿qué apoyo conviene ofrecer a cada perfil de regulación de la atención para mejorar su desempeño?")
+    aviso_info("**Pregunta de decisión:** ¿qué apoyo conviene ofrecer a cada perfil de regulación de la atención para mejorar su desempeño?")
     st.subheader("Descripción del dataset")
-    st.dataframe(pd.DataFrame({
+    tabla_color(pd.DataFrame({
         "Variable": ["id_estudiante", "semestre", "taller_gestion_tiempo", "horas_estudio_semana", "horas_sueno",
                      "minutos_atencion", "uso_celular_horas", "calificacion"],
         "Tipo": ["Texto (código anónimo)", "Numérica discreta", "Categórica (Sí / No)", "Numérica continua", "Numérica continua",
                  "Numérica continua", "Numérica continua", "Numérica continua"],
         "Descripción": ["Identificador sin nombre", "Semestre que cursa (2 a 9)", "Participó en el taller de gestión del tiempo",
                         "Horas de estudio fuera de clase", "Horas de sueño por noche", "Minutos que se concentra antes de distraerse",
-                        "Horas diarias de uso del celular", "Calificación promedio, escala 0 a 100"]}), hide_index=True)
+                        "Horas diarias de uso del celular", "Calificación promedio, escala 0 a 100"]}), index=False, destacar=["Variable"])
     st.write("**Fuente:** datos **simulados por la alumna** con semilla fija (42), diseñados con problemas de calidad a propósito "
              "(valores faltantes y capturas erróneas) para practicar la limpieza.")
     st.subheader("Consideración ética y protocolo de manejo de datos")
@@ -185,14 +240,14 @@ def p_situacion():
     st.write("**Por qué sirve este dataset:** incluye hábitos medibles que podrían influir en la calificación, un grupo con taller y otro sin taller "
              "(para comparar) y suficientes estudiantes para encontrar perfiles distintos.")
     st.write("**Primeros registros (sin limpiar):**")
-    st.dataframe(crudo_f.head(10), hide_index=True)
+    tabla_color(crudo_f.head(10), grad=["calificacion"], index=False)
     ver_codigo(an.generar_datos)
 
 
 def p_descriptiva():
     encabezado("Antes de modelar hay que mirar los datos: sus centros, su dispersión y los valores que no encajan.")
     st.subheader("Estadística descriptiva y exploratoria (datos originales)")
-    st.dataframe(an.resumen(crudo_f))
+    tabla_color(an.resumen(crudo_f), grad=["media", "mediana", "desv_est", "rango"])
     var = elegir("v_expl", etiqueta="Variable a explorar")
     a, b = st.columns(2)
     with a:
@@ -207,7 +262,7 @@ def p_descriptiva():
     q1, q3, iqr, li, ls = an.limites_tukey(crudo_f[var])
     n_at = int(((crudo_f[var] < li) | (crudo_f[var] > ls)).sum())
     st.write(f"**Regla de Tukey:** IQR = {iqr:.2f}; valores fuera de [{li:.2f}, {ls:.2f}] son atípicos. En esta variable hay **{n_at}**.")
-    st.dataframe(an.atipicos(crudo_f))
+    tabla_color(an.atipicos(crudo_f), calido=["atípicos"])
     st.markdown("""**Anomalías propias del problema:**
 - *Uso de celular:* valores de 15 a 22 horas al día son imposibles para alguien que duerme y estudia; son errores de captura.
 - *Horas de estudio:* valores de 55 a 80 por semana sugieren que se registraron las horas del mes y no las de la semana.
@@ -226,9 +281,9 @@ def p_descriptiva():
 def p_limpieza():
     encabezado("Los datos reales casi nunca llegan limpios: limpiarlos bien cambia las conclusiones.")
     st.subheader("Preparación y limpieza")
-    st.dataframe(pd.DataFrame({"Faltantes antes": crudo[an.VARS].isna().sum().values, "Faltantes después": limpio[an.VARS].isna().sum().values,
+    tabla_color(pd.DataFrame({"Faltantes antes": crudo[an.VARS].isna().sum().values, "Faltantes después": limpio[an.VARS].isna().sum().values,
                                "Atípicos antes": an.atipicos(crudo)["atípicos"].values, "Atípicos después": an.atipicos(limpio)["atípicos"].values},
-                              index=[an.ETIQ[c] for c in an.VARS]))
+                              index=[an.ETIQ[c] for c in an.VARS]), calido=["Faltantes antes", "Atípicos antes"], grad=["Faltantes después", "Atípicos después"])
     st.markdown("""**Técnicas aplicadas y por qué:**
 - **Imputación por mediana** (faltantes de sueño y atención): la mediana no se distorsiona con valores extremos, a diferencia de la media, y no se eliminan filas para no perder estudiantes.
 - **Capping con los límites de Tukey** (atípicos): conserva cada registro y limita el daño de los errores de captura; eliminarlos habría descartado estudiantes por un solo dato mal capturado. La calificación además se limita a 100.
@@ -251,7 +306,7 @@ def p_limpieza():
              "Sin limpiar, se habría subestimado el efecto del estudio.")
     z = pd.DataFrame(an.StandardScaler().fit_transform(limpio[an.FEATS]), columns=an.FEATS).agg(["mean", "std"]).round(3)
     st.write("**Comprobación del z-score (media 0 y desviación 1):**")
-    st.dataframe(z)
+    tabla_color(z, grad=list(z.columns))
     ver_codigo(an.limpiar, extra="\n\n# Estandarización z-score (para K-means)\nz = StandardScaler().fit_transform(limpio[FEATS])")
 
 
@@ -262,7 +317,7 @@ def p_inferencial():
              "**H₁:** μ(con taller) − μ(sin taller) > 0 (el taller sí la mejora).  \nPrueba t de Student de dos muestras independientes, α = 0.05.")
     r = an.prueba_t(limpio_f)
     if r is None:
-        st.warning("Con este filtro no hay suficientes estudiantes en ambos grupos.")
+        aviso_alerta("Con este filtro no hay suficientes estudiantes en ambos grupos.")
     else:
         for col, (t, v, c) in zip(st.columns(5), [("Media con taller", f"{r['media_si']:.2f}", MENU[1]), ("Media sin taller", f"{r['media_no']:.2f}", MENU[2]),
                                                   ("Estadístico t", f"{r['t']:.3f}", MENU[3]), ("Valor p", fmt_p(r["p"]), MENU[4]),
@@ -271,10 +326,10 @@ def p_inferencial():
                 tarjeta(t, v, c)
         st.write("")
         if r["p"] < 0.05:
-            st.success(f"Se rechaza H₀ (p < 0.05): quienes tomaron el taller tienen en promedio {r['dif']:.2f} puntos más. "
+            aviso_ok(f"Se rechaza H₀ (p < 0.05): quienes tomaron el taller tienen en promedio {r['dif']:.2f} puntos más. "
                        f"Con 95% de confianza, la mejora está entre {r['ic'][0]:.2f} y {r['ic'][1]:.2f} puntos.")
         else:
-            st.warning("No se rechaza H₀: no hay evidencia suficiente de que el taller mejore la calificación.")
+            aviso_alerta("No se rechaza H₀: no hay evidencia suficiente de que el taller mejore la calificación.")
         st.caption(f"Supuesto de varianzas iguales (Levene): p = {r['levene_p']:.3f}. Limitación: en un caso real la participación en el taller "
                    "no se asigna al azar, así que podrían influir otros factores.")
     st.subheader("Regresión lineal simple y correlación de Pearson")
@@ -323,8 +378,11 @@ def p_kmeans():
     st.write("**Perfil y acción recomendada por segmento:**")
     tabla = perfil.rename(columns={"segmento": "Segmento", "estudiantes": "Estudiantes", "atencion": "Atención (min)", "estudio": "Estudio (h/sem)",
                                    "sueno": "Sueño (h)", "celular": "Celular (h/día)", "calificacion": "Calificación", "accion": "Acción recomendada"})
-    st.dataframe(tabla[["Segmento", "Estudiantes", "Atención (min)", "Estudio (h/sem)", "Sueño (h)", "Celular (h/día)", "Calificación",
-                        "Acción recomendada"]], hide_index=True)
+    sty = tabla_color(tabla[["Segmento", "Estudiantes", "Atención (min)", "Estudio (h/sem)", "Sueño (h)", "Celular (h/día)", "Calificación",
+                             "Acción recomendada"]], grad=["Estudiantes", "Atención (min)", "Estudio (h/sem)", "Sueño (h)", "Celular (h/día)", "Calificación"],
+                      index=False, mostrar=False)
+    sty = sty.apply(lambda c: [f"background-color:{colores.get(v, '#CFEFF5')};color:#01282E;font-weight:bold" for v in c], subset=["Segmento"])
+    st.dataframe(sty, hide_index=True)
     st.caption("Los segmentos describen hábitos de estudio; no son diagnósticos ni etiquetas de las personas.")
     ver_codigo(an.silueta, an.segmentar, g_seg)
 
@@ -338,7 +396,7 @@ def p_dashboard():
                      format_func=lambda c: an.ETIQ[c], key="v_dash")
     d = limpio_f if grupo == "Todos" else limpio_f[limpio_f.taller_gestion_tiempo == ("Sí" if grupo == "Con taller" else "No")]
     if len(d) < 20:
-        st.warning("Hay muy pocos estudiantes con esa combinación de filtros.")
+        aviso_alerta("Hay muy pocos estudiantes con esa combinación de filtros.")
         return
     seg3, perfil3, cent3 = an.segmentar(limpio_f, 3)
     seg_d = seg3.loc[d.index]
