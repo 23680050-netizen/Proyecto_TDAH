@@ -11,14 +11,17 @@ from matplotlib.colors import LinearSegmentedColormap
 import analisis as an
 
 st.set_page_config(page_title="TDAH · Proyecto final", layout="wide")
-OSC, TEAL, AMB, ROJ = "#01282E", "#0CC0DF", "#E9C46A", "#E76F51"
+OSC, TEAL, CIEL, MARINO = "#01282E", "#0CC0DF", "#7CC4F2", "#1B3F8B"
 MENU = ["#0CC0DF", "#0097B2", "#027387", "#005463", "#02414C", "#01282E"]
-COL_SEG = {"Enfocados constantes": "#0097B2", "Esforzados con atención corta": AMB, "Dispersos con poco sueño": ROJ}
+COL_SEG = {"Enfocados constantes": "#0097B2", "Esforzados con atención corta": CIEL, "Dispersos con poco sueño": MARINO}
 PAGINAS = [("situacion", "1. Situación y datos"), ("descriptiva", "2. Estadística descriptiva"), ("limpieza", "3. Limpieza"),
            ("inferencial", "4. Inferencial"), ("kmeans", "5. K-Means"), ("dashboard", "6. Dashboard")]
-sns.set_theme(style="whitegrid")
+sns.set_theme(style="whitegrid", rc={"axes.spines.top": False, "axes.spines.right": False, "grid.color": "#E3EDF0",
+                                     "axes.edgecolor": "#B8CBD0", "axes.titleweight": "bold", "axes.titlesize": 12,
+                                     "axes.labelcolor": "#01282E", "text.color": "#01282E", "xtick.color": "#3C5B61",
+                                     "ytick.color": "#3C5B61", "figure.facecolor": "white"})
 CMAP_T = LinearSegmentedColormap.from_list("teal", ["#EAF8FB", "#8EDBE9", "#0AA2BF", "#02566B"])
-CMAP_C = LinearSegmentedColormap.from_list("calido", ["#FFF6DD", "#F6D58B", "#EE9B6A", "#D9573B"])
+CMAP_C = LinearSegmentedColormap.from_list("calido", ["#EEF5FF", "#B7D6F7", "#5C97D6", "#1B3F8B"])
 
 
 @st.cache_data
@@ -41,14 +44,15 @@ def mezcla(c1, c2, t):
 
 
 def tarjeta(titulo, valor, color=MENU[1]):
-    fondo = f"linear-gradient(135deg,{color},{mezcla(color, OSC, .45)})"
-    st.markdown(f"""<div style="background:{fondo};padding:14px 16px;border-radius:10px;color:white;text-align:center;
-        box-shadow:0 3px 8px rgba(1,40,46,.18)"><div style="font-size:.9rem;opacity:.92">{titulo}</div>
-        <div style="font-size:1.5rem;font-weight:700">{valor}</div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style="background:#fff;border:1px solid #D5E6EA;border-left:6px solid {color};border-radius:10px;
+        padding:12px 16px;box-shadow:0 2px 8px rgba(1,40,46,.08)">
+        <div style="font-size:.76rem;letter-spacing:.05em;text-transform:uppercase;color:#5B7A80">{titulo}</div>
+        <div style="font-family:'Libre Baskerville',Georgia,serif;font-size:1.4rem;font-weight:700;color:{OSC};margin-top:3px">{valor}</div>
+        </div>""", unsafe_allow_html=True)
 
 
 def tabla_color(df, grad=(), calido=(), index=True, destacar=None, mostrar=True):
-    """Tabla con filas alternadas, degradados en tonos turquesa (o cálidos para alertas) y encabezado de fila de color."""
+    """Tabla con filas alternadas, degradados en turquesa (o en azul rey para resaltar problemas) y encabezado de fila de color."""
     sty = df.style.apply(lambda c: ["background-color:#F3FBFD" if i % 2 else "background-color:#FFFFFF" for i in range(len(c))], axis=0)
     sty = sty.format(precision=2)
     if destacar:
@@ -127,12 +131,12 @@ def g_hist(d, var, ax):
 
 def g_caja(d, var, ax):
     sns.boxplot(data=d, x="taller_gestion_tiempo", y=var, hue="taller_gestion_tiempo", order=["No", "Sí"],
-                palette={"No": AMB, "Sí": MENU[1]}, legend=False, ax=ax)
+                palette={"No": CIEL, "Sí": MENU[1]}, legend=False, ax=ax)
     ax.set_title("Con taller y sin taller"); ax.set_xlabel("Participó en el taller de gestión del tiempo"); ax.set_ylabel(an.ETIQ[var])
 
 
 def g_reg(d, x, ax):
-    sns.regplot(data=d, x=x, y="calificacion", scatter_kws={"alpha": .55, "color": MENU[1]}, line_kws={"color": ROJ}, ax=ax)
+    sns.regplot(data=d, x=x, y="calificacion", scatter_kws={"alpha": .55, "color": MENU[1]}, line_kws={"color": MARINO}, ax=ax)
     ax.set_title("Regresión lineal simple"); ax.set_xlabel(an.ETIQ[x]); ax.set_ylabel(an.ETIQ["calificacion"])
 
 
@@ -172,23 +176,34 @@ section[data-testid="stSidebar"]{{background:{OSC};min-width:300px;max-width:300
 .burbuja{{position:relative;background:{OSC};color:#fff;padding:14px 18px;border-radius:8px;max-width:620px;
   font-family:'Libre Baskerville',Georgia,serif;font-size:.95rem;line-height:1.5}}
 .burbuja::before{{content:"";position:absolute;left:-10px;top:50%;margin-top:-9px;border:9px solid transparent;border-left:0;border-right-color:{OSC}}}
-h3{{color:{OSC};border-bottom:2px solid {TEAL};padding-bottom:4px}}
+h3{{font-family:'Libre Baskerville',Georgia,serif;font-size:1.25rem;color:{OSC};border-bottom:1px solid #D5E6EA;position:relative;padding-bottom:6px}}
+h3::after{{content:'';position:absolute;left:0;bottom:-1px;width:70px;height:3px;background:{TEAL}}}
+h4{{font-family:'Libre Baskerville',Georgia,serif;font-size:1.05rem;color:{OSC};margin-top:14px}}
+[data-testid="stImage"] img{{border:1px solid #D5E6EA;border-radius:10px;box-shadow:0 2px 8px rgba(1,40,46,.07);background:#fff;padding:4px}}
+[data-testid="stDataFrame"]{{border:1px solid #D5E6EA;border-radius:10px;overflow:hidden}}
+[data-testid="stExpander"]{{border:1px solid #D5E6EA;border-radius:10px}}
+.marca{{background:#01171B;padding:20px 22px}}
+.marca small{{display:block;color:#7FD3E3;letter-spacing:.14em;text-transform:uppercase;font-size:.68rem}}
+.marca b{{display:block;color:#fff;font-family:'Libre Baskerville',Georgia,serif;font-size:.98rem;margin-top:4px;font-weight:400}}
+.rot{{color:#7FD3E3;letter-spacing:.14em;text-transform:uppercase;font-size:.7rem;margin:0 0 4px 0}}
 [class*="st-key-aviso-"]{{padding:12px 16px;border-radius:8px;border-left:6px solid;margin:8px 0}}
 [class*="st-key-aviso-"] p{{margin:0;color:{OSC}}}
 [class*="st-key-aviso-info"]{{background:#E3F6FA;border-color:#0097B2}}
 [class*="st-key-aviso-ok"]{{background:#E2F5EC;border-color:#2A9D8F}}
-[class*="st-key-aviso-alerta"]{{background:#FFF4DA;border-color:#E9A23B}}
+[class*="st-key-aviso-alerta"]{{background:#E8EEFB;border-color:#3A5BA0}}
 .st-key-b_inicio button{{background:#0097B2;border:0;border-radius:6px}}
 .st-key-b_inicio button p{{color:#fff}}
-.pie{{display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;border-top:1.5px solid {OSC};margin-top:36px;padding-top:12px;
-  font-family:'Libre Baskerville',Georgia,serif;font-size:.9rem;color:{OSC}}}
+.pie{{display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;border-top:1.5px solid {OSC};margin-top:40px;padding-top:12px;
+  font-family:'Libre Baskerville',Georgia,serif;font-size:.82rem;color:#4A6970;letter-spacing:.02em}}
 </style>""", unsafe_allow_html=True)
 
 with st.sidebar:
+    st.markdown('<div class="marca"><small>Proyecto final · INC-2505</small><b>Análisis y Exploración de Datos</b></div>', unsafe_allow_html=True)
     with st.container(key="menu"):
         for i, (k, txt) in enumerate(PAGINAS, 1):
             st.button(txt, key=f"m_{i}", on_click=ir, args=(k,))
     with st.container(key="filtro"):
+        st.markdown('<p class="rot">Filtros</p>', unsafe_allow_html=True)
         sem = st.slider("Filtro de semestre", 2, 9, (2, 9))
         st.caption("Se aplica a todas las secciones, excepto Limpieza.")
 
@@ -206,6 +221,14 @@ def p_inicio():
     encabezado("El TDAH no consiste en la falta total de atención, sino en una dificultad para regularla, "
                "lo que puede provocar el hiperfoco.", grande=True)
     st.write("Proyecto final de Análisis y Exploración de Datos (INC-2505). Elige una sección en el menú de la izquierda para recorrer el análisis.")
+    r = an.prueba_t(limpio_f)
+    c = st.columns(3)
+    with c[0]:
+        tarjeta("Estudiantes analizados", f"{len(limpio_f)}", MENU[1])
+    with c[1]:
+        tarjeta("Calificación promedio", f"{limpio_f['calificacion'].mean():.1f}", MENU[2])
+    with c[2]:
+        tarjeta("Mejora con el taller", f"{r['dif']:+.1f} puntos" if r else "N/D", MENU[3])
 
 
 def p_situacion():
@@ -256,7 +279,7 @@ def p_descriptiva():
         mostrar(fig)
     with b:
         fig, ax = plt.subplots(figsize=(6, 3.6))
-        sns.boxplot(x=crudo_f[var], color=AMB, ax=ax)
+        sns.boxplot(x=crudo_f[var], color=CIEL, ax=ax)
         ax.set_title("Diagrama de caja"); ax.set_xlabel(an.ETIQ[var])
         mostrar(fig)
     q1, q3, iqr, li, ls = an.limites_tukey(crudo_f[var])
@@ -291,7 +314,7 @@ def p_limpieza():
     var = elegir("v_limp", etiqueta="Variable para comparar antes y después")
     largo = pd.DataFrame({"Antes": crudo[var], "Después": limpio[var]}).melt(var_name="etapa", value_name="valor")
     fig, ax = plt.subplots(figsize=(7, 3.8))
-    sns.boxplot(data=largo, x="etapa", y="valor", hue="etapa", palette={"Antes": AMB, "Después": MENU[1]}, legend=False, ax=ax)
+    sns.boxplot(data=largo, x="etapa", y="valor", hue="etapa", palette={"Antes": CIEL, "Después": MENU[1]}, legend=False, ax=ax)
     ax.set_xlabel(""); ax.set_ylabel(an.ETIQ[var]); ax.set_title("Antes y después de la limpieza")
     mostrar(fig)
     r0, r1 = an.regresion_simple(crudo.dropna(), "horas_estudio_semana"), an.regresion_simple(limpio, "horas_estudio_semana")
@@ -354,28 +377,61 @@ def p_inferencial():
 
 def p_kmeans():
     encabezado("K-means agrupa a los estudiantes por su parecido; no pone etiquetas clínicas, solo describe hábitos.")
-    st.subheader("Segmentación con K-means")
-    st.write("Variables usadas (estandarizadas): minutos de atención, horas de estudio y horas de sueño.")
+    st.subheader("Segmentación con K-means en seis pasos")
+    st.write("Variables usadas: minutos de atención sostenida, horas de estudio por semana y horas de sueño.")
+
+    st.markdown("#### Paso 1: Generación y exploración inicial de los datos")
+    st.write("Los datos de los estudiantes se generaron con semilla fija (sección 1) y se limpiaron (sección 3). Antes de agrupar, se grafica la nube de puntos "
+             "**sin etiquetas** para observar si tiende a agruparse en \"islas\" o zonas naturales.")
+    fig, ax = plt.subplots(figsize=(7, 3.6))
+    sns.scatterplot(data=limpio_f, x="minutos_atencion", y="horas_estudio_semana", color=MENU[1], s=50, ax=ax)
+    ax.set_title("Estudiantes sin etiquetar"); ax.set_xlabel(an.ETIQ["minutos_atencion"]); ax.set_ylabel(an.ETIQ["horas_estudio_semana"])
+    mostrar(fig)
+
+    st.markdown("#### Paso 2: Preprocesamiento y escalamiento de variables")
+    st.write("K-means calcula **distancias** entre los puntos y los centros de cada grupo. Si una variable tiene valores mucho más grandes que otra "
+             "(por ejemplo, minutos de atención frente a horas de sueño), dominaría el cálculo y sesgaría los grupos. Con el **z-score** cada variable "
+             "queda con media 0 y desviación estándar 1.")
+    X = limpio_f[an.FEATS]
+    Z = pd.DataFrame(an.StandardScaler().fit_transform(X), columns=an.FEATS, index=X.index)
+    comp = pd.DataFrame({"Media (original)": X.mean(), "Desv. (original)": X.std(), "Media (z-score)": Z.mean(), "Desv. (z-score)": Z.std()}).round(3) + 0.0
+    comp.index = [an.ETIQ[c] for c in an.FEATS]
+    tabla_color(comp, grad=["Desv. (original)"])
+
+    st.markdown("#### Paso 3: Búsqueda del número óptimo de grupos (k) con el coeficiente de silueta")
+    st.write("La silueta mide qué tan parecido es un estudiante a su propio grupo (cohesión) frente a los grupos vecinos (separación). Va de −1 a +1: "
+             "cerca de +1 está bien clasificado, cerca de 0 está en la frontera y negativo probablemente está en el grupo equivocado. Se prueba de k = 2 a k = 6.")
     sil = an.silueta(limpio_f)
     k_opt = max(sil, key=sil.get)
-    a, b = st.columns([1, 2])
+    a, b = st.columns(2)
     with a:
-        fig, ax = plt.subplots(figsize=(4.5, 3.8))
+        fig, ax = plt.subplots(figsize=(5, 3.8))
         ax.plot(list(sil), list(sil.values()), marker="o", color=MENU[1])
-        ax.scatter([k_opt], [sil[k_opt]], s=160, color=ROJ, zorder=5)
+        ax.scatter([k_opt], [sil[k_opt]], s=160, color=MARINO, zorder=5)
         ax.set_xlabel("k"); ax.set_ylabel("Silueta promedio"); ax.set_title("Elección de k")
         mostrar(fig)
-    k = st.slider("Número de segmentos (k)", 2, 6, k_opt)
-    seg, perfil, cent = an.segmentar(limpio_f, k)
-    nivel = "fuerte" if sil[k_opt] > 0.5 else "razonable" if sil[k_opt] > 0.25 else "débil"
-    st.write(f"La silueta es máxima con **k = {k_opt}** ({sil[k_opt]:.3f}, estructura {nivel}); por eso se propone ese número de grupos. "
-             f"Con k = {k} la silueta es {sil[k]:.3f}.")
-    colores = {s: COL_SEG.get(s, c) for s, c in zip(perfil["segmento"], [MENU[1], AMB, ROJ, MENU[3], MENU[5], "#8D99AE"])}
     with b:
-        fig, ax = plt.subplots(figsize=(7, 3.8))
-        g_seg(seg, cent, colores, ax)
-        mostrar(fig)
-    st.write("**Perfil y acción recomendada por segmento:**")
+        k = st.slider("Número de segmentos (k)", 2, 6, k_opt)
+        nivel = "fuerte" if sil[k_opt] > 0.5 else "razonable" if sil[k_opt] > 0.25 else "débil"
+        st.write(f"La silueta es máxima con **k = {k_opt}** ({sil[k_opt]:.3f}, estructura {nivel}); por eso se propone ese número de grupos. "
+                 f"Con k = {k} la silueta es {sil[k]:.3f}.")
+        tabla_color(pd.DataFrame({"k": list(sil), "Silueta": [round(v, 3) for v in sil.values()]}), grad=["Silueta"], index=False)
+
+    seg, perfil, cent = an.segmentar(limpio_f, k)
+    colores = {s: COL_SEG.get(s, c) for s, c in zip(perfil["segmento"], [MENU[1], CIEL, MARINO, MENU[3], MENU[5], "#8D99AE"])}
+
+    st.markdown("#### Paso 4: Entrenamiento del modelo definitivo y asignación de etiquetas")
+    st.write(f"Se ejecuta K-means solo con k = {k}. El algoritmo calcula los **centroides** (el estudiante promedio de cada grupo) y asigna a cada "
+             "estudiante una etiqueta numérica de clúster.")
+    sc = an.StandardScaler().fit(limpio_f[an.FEATS])
+    cz = pd.DataFrame(sc.transform(cent[an.FEATS]), columns=["Atención (z)", "Estudio (z)", "Sueño (z)"]).round(3)
+    cz.insert(0, "Estudiantes", seg["cluster"].value_counts().sort_index().values)
+    cz.insert(0, "Clúster", range(k))
+    tabla_color(cz, grad=["Estudiantes"], index=False)
+    st.caption("Los centroides están en escala estandarizada; en el paso 5 se traducen a unidades reales.")
+
+    st.markdown("#### Paso 5: Perfilamiento de negocio y toma de decisiones")
+    st.write("Un número de clúster no le dice nada a la coordinación. Se calcula el promedio real de cada grupo y se interpreta su comportamiento para nombrarlo y asignarle una acción.")
     tabla = perfil.rename(columns={"segmento": "Segmento", "estudiantes": "Estudiantes", "atencion": "Atención (min)", "estudio": "Estudio (h/sem)",
                                    "sueno": "Sueño (h)", "celular": "Celular (h/día)", "calificacion": "Calificación", "accion": "Acción recomendada"})
     sty = tabla_color(tabla[["Segmento", "Estudiantes", "Atención (min)", "Estudio (h/sem)", "Sueño (h)", "Celular (h/día)", "Calificación",
@@ -384,7 +440,13 @@ def p_kmeans():
     sty = sty.apply(lambda c: [f"background-color:{colores.get(v, '#CFEFF5')};color:#01282E;font-weight:bold" for v in c], subset=["Segmento"])
     st.dataframe(sty, hide_index=True)
     st.caption("Los segmentos describen hábitos de estudio; no son diagnósticos ni etiquetas de las personas.")
-    ver_codigo(an.silueta, an.segmentar, g_seg)
+
+    st.markdown("#### Paso 6: Visualización final de clústeres y centroides")
+    st.write("La misma nube de puntos del paso 1, ahora coloreada por segmento y con una estrella en cada centroide (ya en unidades reales).")
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    g_seg(seg, cent, colores, ax)
+    mostrar(fig)
+    ver_codigo(an.silueta, an.segmentar, g_seg, extra="\n\n# Paso 2: z-score\nZ = StandardScaler().fit_transform(limpio[FEATS])")
 
 
 def p_dashboard():
