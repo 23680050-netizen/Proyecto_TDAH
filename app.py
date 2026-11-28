@@ -193,6 +193,16 @@ h4{{font-family:'Libre Baskerville',Georgia,serif;font-size:1.05rem;color:{OSC};
 [class*="st-key-aviso-alerta"]{{background:#E8EEFB;border-color:#3A5BA0}}
 .st-key-b_inicio button{{background:#0097B2;border:0;border-radius:6px}}
 .st-key-b_inicio button p{{color:#fff}}
+.block-container > div[data-testid="stVerticalBlock"]{{min-height:calc(100vh - 5rem)}}
+.st-key-pie{{margin-top:auto}}
+.clave{{background:#F3FBFD;border:1px solid #D5E6EA;border-top:4px solid {TEAL};border-radius:10px;padding:12px 14px;font-size:.88rem;color:{OSC};min-height:100px}}
+.ruta{{background:#fff;border:1px solid #D5E6EA;border-radius:10px;padding:14px 16px;box-shadow:0 2px 8px rgba(1,40,46,.07);min-height:104px}}
+.ruta span{{display:inline-block;background:#0097B2;color:#fff;border-radius:50%;width:26px;height:26px;text-align:center;line-height:26px;margin-right:8px;font-size:.85rem}}
+.ruta b{{font-family:'Libre Baskerville',Georgia,serif;color:{OSC}}}
+.ruta p{{margin:8px 0 0 0;font-size:.85rem;color:#4A6970}}
+.st-key-b_sig{{display:flex;justify-content:flex-end}}
+.st-key-b_sig button{{background:#0097B2;border:0;border-radius:6px}}
+.st-key-b_sig button p{{color:#fff}}
 .pie{{display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;border-top:1.5px solid {OSC};margin-top:40px;padding-top:12px;
   font-family:'Libre Baskerville',Georgia,serif;font-size:.82rem;color:#4A6970;letter-spacing:.02em}}
 </style>""", unsafe_allow_html=True)
@@ -229,6 +239,11 @@ def p_inicio():
         tarjeta("Calificación promedio", f"{limpio_f['calificacion'].mean():.1f}", MENU[2])
     with c[2]:
         tarjeta("Mejora con el taller", f"{r['dif']:+.1f} puntos" if r else "N/D", MENU[3])
+    st.markdown("### Ruta del análisis")
+    for fila in (PAGINAS[:3], PAGINAS[3:]):
+        for col, (k, txt) in zip(st.columns(3), fila):
+            with col:
+                st.markdown(f'<div class="ruta"><span>{txt[0]}</span><b>{txt[3:]}</b><p>{RUTA[k]}</p></div>', unsafe_allow_html=True)
 
 
 def p_situacion():
@@ -499,8 +514,54 @@ debe tomarla un profesional, con su consentimiento y sin diagnosticar ni sancion
     ver_codigo(p_dashboard, g_hist, g_reg, g_caja, g_seg)
 
 
+RUTA = {"situacion": "La pregunta de decisión, el dataset y el protocolo ético.",
+        "descriptiva": "Medidas, histogramas, cajas y regla de Tukey.",
+        "limpieza": "Imputación, capping y z-score, con el antes y después.",
+        "inferencial": "Prueba t con intervalo de confianza y regresión simple.",
+        "kmeans": "Seis pasos para descubrir perfiles de atención.",
+        "dashboard": "Todo en un vistazo, con conclusión y recomendación."}
+CLAVES = {
+    "situacion": ["La pregunta de decisión guía todo el análisis: cada sección responde una parte de ella.",
+                  "Los datos son simulados: no identifican a ninguna persona real.",
+                  "El TDAH solo lo diagnostica un profesional; aquí se estudian hábitos, no diagnósticos."],
+    "descriptiva": ["Si la media y la mediana se separan mucho, suele haber valores extremos.",
+                    "La regla de Tukey marca como atípico lo que queda fuera de Q1 − 1.5·IQR y Q3 + 1.5·IQR.",
+                    "Un atípico puede ser un error de captura o un caso real: primero se investiga, luego se decide."],
+    "limpieza": ["Imputar con la mediana evita que los extremos distorsionen los datos faltantes.",
+                 "El capping conserva el registro y limita el efecto de los valores erróneos.",
+                 "Limpiar cambia los resultados: por eso se compara siempre el antes y el después."],
+    "inferencial": ["Un valor p menor que 0.05 indica que la diferencia difícilmente es casualidad.",
+                    "El intervalo de confianza muestra qué tan grande puede ser el efecto, no solo si existe.",
+                    "Correlación no implica causalidad: que dos variables se muevan juntas no prueba que una cause a la otra."],
+    "kmeans": ["K-means necesita variables en la misma escala: por eso se estandarizan.",
+               "La silueta ayuda a elegir k, pero el resultado también debe tener sentido para el problema.",
+               "Los segmentos describen hábitos y orientan el apoyo; no son etiquetas de las personas."],
+    "dashboard": ["Los filtros recalculan las gráficas y los indicadores para el grupo elegido.",
+                  "La recomendación se apoya en los análisis previos: asociaciones, diferencias y segmentos.",
+                  "Los datos son simulados: las conclusiones sirven para practicar el método, no para decidir sobre personas reales."],
+}
+
+
+def pie_pagina(pagina):
+    """Rellena el espacio inferior con ideas clave y el acceso a la siguiente sección."""
+    if pagina == "inicio":
+        return
+    st.markdown("### Para recordar")
+    for col, txt in zip(st.columns(3), CLAVES[pagina]):
+        with col:
+            st.markdown(f'<div class="clave">{txt}</div>', unsafe_allow_html=True)
+    claves = [k for k, _ in PAGINAS]
+    i = claves.index(pagina)
+    if i + 1 < len(claves):
+        st.button(f"Siguiente: {PAGINAS[i + 1][1][3:]}", key="b_sig", on_click=ir, args=(claves[i + 1],))
+    else:
+        st.button("Volver al inicio", key="b_sig", on_click=ir, args=("inicio",))
+
+
 {"inicio": p_inicio, "situacion": p_situacion, "descriptiva": p_descriptiva, "limpieza": p_limpieza,
  "inferencial": p_inferencial, "kmeans": p_kmeans, "dashboard": p_dashboard}[pag]()
 
-st.markdown('<div class="pie"><span>Proyecto-TDAH</span><span>Instituto Tecnológico de Cuautla</span><span>Gil Toledano Nicol Abigail</span></div>',
-            unsafe_allow_html=True)
+pie_pagina(pag)
+with st.container(key="pie"):
+    st.markdown('<div class="pie"><span>Proyecto-TDAH</span><span>Instituto Tecnológico de Cuautla</span><span>Gil Toledano Nicol Abigail</span></div>',
+                unsafe_allow_html=True)
